@@ -1,0 +1,5 @@
+transformers
+torch
+requests
+beautifulsoup4
+duckduckgo_search

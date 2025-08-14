@@ -380,16 +380,20 @@
         // Ad Configuration
         const AD_CLIENT = 'ca-pub-XXXXXXXXXX'; // Replace with your AdSense client ID
         
-        // Analytics (optional - remove if you don't have Google Analytics)
+        // Safe analytics tracking function
         function trackEvent(action, category = 'user_interaction') {
-            // Only track if Google Analytics is loaded
-            if (typeof gtag !== 'undefined') {
-                gtag('event', action, {
-                    event_category: category,
-                    event_label: window.location.pathname
-                });
+            try {
+                // Only track if Google Analytics is loaded
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', action, {
+                        event_category: category,
+                        event_label: window.location.pathname
+                    });
+                }
+            } catch (error) {
+                // Silently ignore analytics errors
             }
-            // If no analytics, just log to console for debugging
+            // Always log to console for debugging
             console.log(`Event: ${action} | Category: ${category}`);
         }
 
@@ -397,6 +401,7 @@
         function showInterstitialAd() {
             // You can implement interstitial ads here
             // or use AdSense auto ads which handle this automatically
+            console.log('Interstitial ad trigger point');
         }
         
         // DOM Elements
@@ -434,8 +439,12 @@
                 captureButtons.classList.remove('hidden');
                 startCamera.disabled = true;
                 
+                trackEvent('camera_started');
+                
             } catch (error) {
                 showError('Camera access denied or not available');
+                console.error('Camera error:', error);
+                trackEvent('camera_error', 'errors');
             }
         });
 
@@ -465,6 +474,8 @@
                 captureButtons.classList.add('hidden');
                 analyzeButtons.classList.remove('hidden');
                 
+                trackEvent('photo_captured');
+                
             }, 'image/jpeg', 0.8);
         });
 
@@ -477,6 +488,8 @@
             captureButtons.classList.remove('hidden');
             analyzeButtons.classList.add('hidden');
             results.classList.add('hidden');
+            
+            trackEvent('photo_retake');
         });
 
         // File upload
@@ -498,6 +511,8 @@
                 analyzeButtons.classList.remove('hidden');
                 captureButtons.classList.add('hidden');
                 startCamera.disabled = false;
+                
+                trackEvent('file_uploaded');
             }
         });
 
@@ -538,7 +553,8 @@
                 console.log('Response status:', response.status);
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
 
                 const data = await response.json();
@@ -551,8 +567,11 @@
                     if (fullAnalysis) {
                         setTimeout(showInterstitialAd, 2000);
                     }
+                    
+                    trackEvent('analysis_success', 'clothing_analysis');
                 } else {
                     showError(data.error || 'Analysis failed');
+                    trackEvent('analysis_failed', 'errors');
                 }
 
             } catch (error) {
@@ -611,8 +630,25 @@
 
         // PWA Service Worker Registration
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js');
+            navigator.serviceWorker.register('/sw.js').catch(error => {
+                console.log('Service Worker registration failed:', error);
+            });
         }
+
+        // Test API connection on startup
+        console.log('Testing API connection...');
+        fetch(`${API_BASE}/health`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('✅ API Health Check:', data);
+                if (data.models_loaded === 0) {
+                    console.warn('⚠️ Warning: No models loaded in API');
+                }
+            })
+            .catch(error => {
+                console.error('❌ API connection failed:', error);
+                showError('Cannot connect to AI service. Please check your internet connection and try again.');
+            });
     </script>
 </body>
 </html>

@@ -4,10 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FlipFit Mobile</title>
-    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2563eb">
-    <!-- Remove icons temporarily until you add them -->
-    <link rel="apple-touch-icon" sizes="192x192" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📱</text></svg>">
     <style>
         * {
             margin: 0;
@@ -224,67 +221,10 @@
             margin: 10px 0;
             border: 1px solid #bbf7d0;
         }
-
-        /* Ad Styling */
-        .ad-banner {
-            margin: 15px 0;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            border: 1px solid #e9ecef;
-            min-height: 90px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .sticky-ad {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: white;
-            border-top: 1px solid #e2e8f0;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            z-index: 1000;
-            padding: 8px;
-        }
-
-        .results-ad {
-            margin-top: 20px;
-            background: #fff;
-        }
-
-        /* Adjust container for sticky ad */
-        .container {
-            margin-bottom: 80px; /* Space for sticky ad */
-        }
-
-        @media (max-width: 768px) {
-            .sticky-ad {
-                padding: 5px;
-            }
-            
-            .container {
-                margin-bottom: 70px;
-            }
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Top Banner Ad -->
-        <div class="ad-banner" id="top-ad">
-            <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXX" crossorigin="anonymous"></script>
-            <ins class="adsbygoogle"
-                 style="display:block"
-                 data-ad-client="ca-pub-XXXXXXXXXX"
-                 data-ad-slot="XXXXXXXXXX"
-                 data-ad-format="auto"
-                 data-full-width-responsive="true"></ins>
-            <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-        </div>
-
         <div class="header">
             <h1>🧠 FlipFit</h1>
             <p>AI Clothing Appraiser</p>
@@ -346,62 +286,16 @@
 
         <div class="results hidden" id="results">
             <div id="resultsContent"></div>
-            
-            <!-- Results Page Ad -->
-            <div class="ad-banner results-ad">
-                <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXX" crossorigin="anonymous"></script>
-                <ins class="adsbygoogle"
-                     style="display:block"
-                     data-ad-client="ca-pub-XXXXXXXXXX"
-                     data-ad-slot="XXXXXXXXXX"
-                     data-ad-format="auto"
-                     data-full-width-responsive="true"></ins>
-                <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-            </div>
-        </div>
-
-        <!-- Bottom Sticky Ad -->
-        <div class="sticky-ad">
-            <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXX" crossorigin="anonymous"></script>
-            <ins class="adsbygoogle"
-                 style="display:block"
-                 data-ad-client="ca-pub-XXXXXXXXXX"
-                 data-ad-slot="XXXXXXXXXX"
-                 data-ad-format="auto"
-                 data-full-width-responsive="true"></ins>
-            <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
         </div>
     </div>
 
     <script>
         // Configuration
-        const API_BASE = 'https://cnoval-flipfit.hf.space'; // Your actual HF Space URL
+        const API_BASE = 'https://cnoval-flipfit.hf.space';
         
-        // Ad Configuration
-        const AD_CLIENT = 'ca-pub-XXXXXXXXXX'; // Replace with your AdSense client ID
-        
-        // Safe analytics tracking function
-        function trackEvent(action, category = 'user_interaction') {
-            try {
-                // Only track if Google Analytics is loaded
-                if (typeof gtag !== 'undefined') {
-                    gtag('event', action, {
-                        event_category: category,
-                        event_label: window.location.pathname
-                    });
-                }
-            } catch (error) {
-                // Silently ignore analytics errors
-            }
-            // Always log to console for debugging
+        // Simple logging function (replaces trackEvent)
+        function logEvent(action, category = 'user_interaction') {
             console.log(`Event: ${action} | Category: ${category}`);
-        }
-
-        // Show interstitial ad after analysis (optional)
-        function showInterstitialAd() {
-            // You can implement interstitial ads here
-            // or use AdSense auto ads which handle this automatically
-            console.log('Interstitial ad trigger point');
         }
         
         // DOM Elements
@@ -429,7 +323,7 @@
         startCamera.addEventListener('click', async () => {
             try {
                 stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' } // Use back camera
+                    video: { facingMode: 'environment' }
                 });
                 
                 video.srcObject = stream;
@@ -439,12 +333,12 @@
                 captureButtons.classList.remove('hidden');
                 startCamera.disabled = true;
                 
-                trackEvent('camera_started');
+                logEvent('camera_started');
                 
             } catch (error) {
                 showError('Camera access denied or not available');
                 console.error('Camera error:', error);
-                trackEvent('camera_error', 'errors');
+                logEvent('camera_error', 'errors');
             }
         });
 
@@ -474,7 +368,7 @@
                 captureButtons.classList.add('hidden');
                 analyzeButtons.classList.remove('hidden');
                 
-                trackEvent('photo_captured');
+                logEvent('photo_captured');
                 
             }, 'image/jpeg', 0.8);
         });
@@ -489,7 +383,7 @@
             analyzeButtons.classList.add('hidden');
             results.classList.add('hidden');
             
-            trackEvent('photo_retake');
+            logEvent('photo_retake');
         });
 
         // File upload
@@ -512,7 +406,7 @@
                 captureButtons.classList.add('hidden');
                 startCamera.disabled = false;
                 
-                trackEvent('file_uploaded');
+                logEvent('file_uploaded');
             }
         });
 
@@ -526,8 +420,7 @@
                 return;
             }
 
-            // Track analytics (safely)
-            trackEvent(fullAnalysis ? 'full_analysis' : 'quick_analysis', 'clothing_analysis');
+            logEvent(fullAnalysis ? 'full_analysis' : 'quick_analysis', 'clothing_analysis');
 
             const formData = new FormData();
             formData.append('file', currentImageBlob);
@@ -562,22 +455,16 @@
 
                 if (data.success) {
                     displayResults(data, fullAnalysis);
-                    
-                    // Show interstitial ad after successful analysis (optional)
-                    if (fullAnalysis) {
-                        setTimeout(showInterstitialAd, 2000);
-                    }
-                    
-                    trackEvent('analysis_success', 'clothing_analysis');
+                    logEvent('analysis_success', 'clothing_analysis');
                 } else {
                     showError(data.error || 'Analysis failed');
-                    trackEvent('analysis_failed', 'errors');
+                    logEvent('analysis_failed', 'errors');
                 }
 
             } catch (error) {
                 console.error('Analysis error:', error);
                 showError(`Network error: ${error.message}`);
-                trackEvent('analysis_error', 'errors');
+                logEvent('analysis_error', 'errors');
             }
         }
 
@@ -626,13 +513,6 @@
         function showError(message) {
             results.classList.remove('hidden');
             resultsContent.innerHTML = `<div class="error">${message}</div>`;
-        }
-
-        // PWA Service Worker Registration
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(error => {
-                console.log('Service Worker registration failed:', error);
-            });
         }
 
         // Test API connection on startup

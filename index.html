@@ -192,7 +192,7 @@
             border: 2px solid #e2e8f0;
             border-top: 2px solid #4f46e5;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
+                        animation: spin 1s linear infinite;
         }
 
         @keyframes spin {
@@ -293,7 +293,7 @@
         // Configuration
         const API_BASE = 'https://cnoval-flipfit.hf.space';
         
-        // Simple logging function (replaces trackEvent)
+        // Simple logging function
         function logEvent(action, category = 'user_interaction') {
             console.log(`Event: ${action} | Category: ${category}`);
         }
@@ -521,7 +521,7 @@
             .then(response => response.json())
             .then(data => {
                 console.log('✅ API Health Check:', data);
-                if (data.models_loaded === 0) {
+                                if (data.models_loaded === 0) {
                     console.warn('⚠️ Warning: No models loaded in API');
                 }
             })

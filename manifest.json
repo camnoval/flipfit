@@ -1,0 +1,32 @@
+{
+  "name": "FlipFit Mobile",
+  "short_name": "FlipFit",
+  "description": "AI Clothing Appraiser - Mobile App",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#667eea",
+  "theme_color": "#4f46e5",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["shopping", "utilities", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Quick Scan",
+      "short_name": "Scan",
+      "description": "Take a photo and analyze clothing",
+      "url": "/?quick=true",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

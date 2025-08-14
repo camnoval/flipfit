@@ -6,6 +6,8 @@
     <title>FlipFit Mobile</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2563eb">
+    <!-- Remove icons temporarily until you add them -->
+    <link rel="apple-touch-icon" sizes="192x192" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📱</text></svg>">
     <style>
         * {
             margin: 0;
@@ -272,7 +274,7 @@
 <body>
     <div class="container">
         <!-- Top Banner Ad -->
-<!--         <div class="ad-banner" id="top-ad">
+        <div class="ad-banner" id="top-ad">
             <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXX" crossorigin="anonymous"></script>
             <ins class="adsbygoogle"
                  style="display:block"
@@ -281,7 +283,7 @@
                  data-ad-format="auto"
                  data-full-width-responsive="true"></ins>
             <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-        </div> -->
+        </div>
 
         <div class="header">
             <h1>🧠 FlipFit</h1>
@@ -346,7 +348,7 @@
             <div id="resultsContent"></div>
             
             <!-- Results Page Ad -->
-<!--             <div class="ad-banner results-ad">
+            <div class="ad-banner results-ad">
                 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXX" crossorigin="anonymous"></script>
                 <ins class="adsbygoogle"
                      style="display:block"
@@ -355,11 +357,11 @@
                      data-ad-format="auto"
                      data-full-width-responsive="true"></ins>
                 <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-            </div> -->
+            </div>
         </div>
 
         <!-- Bottom Sticky Ad -->
-<!--         <div class="sticky-ad">
+        <div class="sticky-ad">
             <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXX" crossorigin="anonymous"></script>
             <ins class="adsbygoogle"
                  style="display:block"
@@ -368,31 +370,34 @@
                  data-ad-format="auto"
                  data-full-width-responsive="true"></ins>
             <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-        </div> -->
+        </div>
     </div>
 
     <script>
         // Configuration
         const API_BASE = 'https://cnoval-flipfit.hf.space'; // Your actual HF Space URL
         
-        // // Ad Configuration
-        // const AD_CLIENT = 'ca-pub-XXXXXXXXXX'; // Replace with your AdSense client ID
+        // Ad Configuration
+        const AD_CLIENT = 'ca-pub-XXXXXXXXXX'; // Replace with your AdSense client ID
         
-        // // Analytics
-        // function trackEvent(action, category = 'user_interaction') {
-        //     if (typeof gtag !== 'undefined') {
-        //         gtag('event', action, {
-        //             event_category: category,
-        //             event_label: window.location.pathname
-        //         });
-        //     }
-        // }
+        // Analytics (optional - remove if you don't have Google Analytics)
+        function trackEvent(action, category = 'user_interaction') {
+            // Only track if Google Analytics is loaded
+            if (typeof gtag !== 'undefined') {
+                gtag('event', action, {
+                    event_category: category,
+                    event_label: window.location.pathname
+                });
+            }
+            // If no analytics, just log to console for debugging
+            console.log(`Event: ${action} | Category: ${category}`);
+        }
 
-        // // Show interstitial ad after analysis (optional)
-        // function showInterstitialAd() {
-        //     // You can implement interstitial ads here
-        //     // or use AdSense auto ads which handle this automatically
-        // }
+        // Show interstitial ad after analysis (optional)
+        function showInterstitialAd() {
+            // You can implement interstitial ads here
+            // or use AdSense auto ads which handle this automatically
+        }
         
         // DOM Elements
         const video = document.getElementById('video');
@@ -506,7 +511,7 @@
                 return;
             }
 
-            // Track analytics
+            // Track analytics (safely)
             trackEvent(fullAnalysis ? 'full_analysis' : 'quick_analysis', 'clothing_analysis');
 
             const formData = new FormData();
@@ -521,12 +526,23 @@
 
             try {
                 const endpoint = fullAnalysis ? '/appraise' : '/quick-caption';
-                const response = await fetch(`${API_BASE}${endpoint}`, {
+                const url = `${API_BASE}${endpoint}`;
+                
+                console.log(`Making request to: ${url}`);
+                
+                const response = await fetch(url, {
                     method: 'POST',
                     body: formData
                 });
 
+                console.log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
                 const data = await response.json();
+                console.log('Response data:', data);
 
                 if (data.success) {
                     displayResults(data, fullAnalysis);
@@ -540,7 +556,8 @@
                 }
 
             } catch (error) {
-                showError('Network error. Please check your connection.');
+                console.error('Analysis error:', error);
+                showError(`Network error: ${error.message}`);
                 trackEvent('analysis_error', 'errors');
             }
         }

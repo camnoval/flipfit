@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlipFit Mobile</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #4f46e5, #7c3aed);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .camera-section {
+            padding: 20px;
+        }
+
+        .camera-container {
+            position: relative;
+            border-radius: 15px;
+            overflow: hidden;
+            background: #f8fafc;
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed #cbd5e1;
+        }
+
+        .camera-container.active {
+            border: 2px solid #4f46e5;
+            background: #f1f5f9;
+        }
+
+        #video {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            border-radius: 13px;
+        }
+
+        #preview {
+            width: 100%;
+            max-height: 300px;
+            object-fit: cover;
+            border-radius: 13px;
+        }
+
+        .camera-placeholder {
+            text-align: center;
+            color: #64748b;
+        }
+
+        .camera-placeholder svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 10px;
+            opacity: 0.5;
+        }
+
+        .controls {
+            padding: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #4f46e5, #7c3aed);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #059669, #10b981);
+            color: white;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            background: white;
+        }
+
+        .results {
+            padding: 20px;
+            border-top: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+
+        .result-card {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .result-title {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            color: #64748b;
+            line-height: 1.4;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: #64748b;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e2e8f0;
+            border-top: 2px solid #4f46e5;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .error {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #fecaca;
+        }
+
+        .success {
+            background: #f0fdf4;
+            color: #166534;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #bbf7d0;
+        }
+
+        /* Ad Styling */
+        .ad-banner {
+            margin: 15px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            min-height: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sticky-ad {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            padding: 8px;
+        }
+
+        .results-ad {
+            margin-top: 20px;
+            background: #fff;
+        }
+
+        /* Adjust container for sticky ad */
+        .container {
+            margin-bottom: 80px; /* Space for sticky ad */
+        }
+
+        @media (max-width: 768px) {
+            .sticky-ad {
+                padding: 5px;
+            }
+            
+            .container {
+                margin-bottom: 70px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <div class="header">
+            <h1>🧠 FlipFit</h1>
+            <p>AI Clothing Appraiser</p>
+        </div>
+
+        <div class="camera-section">
+            <div class="camera-container" id="cameraContainer">
+                <div class="camera-placeholder" id="placeholder">
+                    <svg fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5a3.5 3.5 0 0 1-3.5 3.5M17 3H7V1H5v2H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1V1h-2v2z"/>
+                    </svg>
+                    <p>Tap to start camera</p>
+                </div>
+                <video id="video" class="hidden" autoplay playsinline></video>
+                <img id="preview" class="hidden" alt="Preview">
+            </div>
+        </div>
+
+        <div class="controls">
+            <select id="categorySelect">
+                <option value="">Auto-detect category</option>
+                <option value="bags">Bags</option>
+                <option value="belts">Belts</option>
+                <option value="blouses">Blouses</option>
+                <option value="boots">Boots</option>
+                <option value="coats">Coats</option>
+                <option value="dresses">Dresses</option>
+                <option value="gloves">Gloves</option>
+                <option value="hats">Hats</option>
+                <option value="hoodies">Hoodies</option>
+                <option value="jackets">Jackets</option>
+                <option value="jeans">Jeans</option>
+                <option value="scarves">Scarves</option>
+                <option value="shoes">Shoes</option>
+                <option value="shorts">Shorts</option>
+                <option value="skirts">Skirts</option>
+                <option value="sneakers">Sneakers</option>
+                <option value="sweaters">Sweaters</option>
+                <option value="t-shirts">T-shirts</option>
+            </select>
+
+            <div class="button-row">
+                <button id="startCamera" class="btn-primary">📷 Start Camera</button>
+                <button id="uploadBtn" class="btn-secondary">📁 Upload</button>
+            </div>
+
+            <div class="button-row hidden" id="captureButtons">
+                <button id="captureBtn" class="btn-success">📸 Capture</button>
+                <button id="retakeBtn" class="btn-secondary">🔄 Retake</button>
+            </div>
+
+            <div class="button-row hidden" id="analyzeButtons">
+                <button id="quickAnalyze" class="btn-secondary">⚡ Quick Caption</button>
+                <button id="fullAnalyze" class="btn-primary">🔍 Full Analysis</button>
+            </div>
+
+            <input type="file" id="fileInput" accept="image/*" capture="camera" class="hidden">
+        </div>
+
+        <div class="results hidden" id="results">
+            <div id="resultsContent"></div>
+        </div>
+
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = 'https://huggingface.co/spaces/cnoval/FlipFit'; // Replace with your API endpoint
+        
+        // Ad Configuration
+        // const AD_CLIENT = 'ca-pub-XXXXXXXXXX'; // Replace with your AdSense client ID
+        
+        // Analytics
+        // function trackEvent(action, category = 'user_interaction') {
+        //     if (typeof gtag !== 'undefined') {
+        //         gtag('event', action, {
+        //             event_category: category,
+        //             event_label: window.location.pathname
+        //         });
+        //     }
+        // }
+
+        // // Show interstitial ad after analysis (optional)
+        // function showInterstitialAd() {
+        //     // You can implement interstitial ads here
+        //     // or use AdSense auto ads which handle this automatically
+        // }
+        
+        // DOM Elements
+        const video = document.getElementById('video');
+        const preview = document.getElementById('preview');
+        const placeholder = document.getElementById('placeholder');
+        const cameraContainer = document.getElementById('cameraContainer');
+        const startCamera = document.getElementById('startCamera');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const captureBtn = document.getElementById('captureBtn');
+        const retakeBtn = document.getElementById('retakeBtn');
+        const quickAnalyze = document.getElementById('quickAnalyze');
+        const fullAnalyze = document.getElementById('fullAnalyze');
+        const fileInput = document.getElementById('fileInput');
+        const categorySelect = document.getElementById('categorySelect');
+        const results = document.getElementById('results');
+        const resultsContent = document.getElementById('resultsContent');
+        const captureButtons = document.getElementById('captureButtons');
+        const analyzeButtons = document.getElementById('analyzeButtons');
+
+        let stream = null;
+        let currentImageBlob = null;
+
+        // Camera functionality
+        startCamera.addEventListener('click', async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' } // Use back camera
+                });
+                
+                video.srcObject = stream;
+                video.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+                cameraContainer.classList.add('active');
+                captureButtons.classList.remove('hidden');
+                startCamera.disabled = true;
+                
+            } catch (error) {
+                showError('Camera access denied or not available');
+            }
+        });
+
+        // Capture photo
+        captureBtn.addEventListener('click', () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0);
+            
+            canvas.toBlob((blob) => {
+                currentImageBlob = blob;
+                const url = URL.createObjectURL(blob);
+                
+                preview.src = url;
+                preview.classList.remove('hidden');
+                video.classList.add('hidden');
+                
+                // Stop camera
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    stream = null;
+                }
+                
+                captureButtons.classList.add('hidden');
+                analyzeButtons.classList.remove('hidden');
+                
+            }, 'image/jpeg', 0.8);
+        });
+
+        // Retake photo
+        retakeBtn.addEventListener('click', () => {
+            video.classList.remove('hidden');
+            preview.classList.add('hidden');
+            preview.src = '';
+            currentImageBlob = null;
+            captureButtons.classList.remove('hidden');
+            analyzeButtons.classList.add('hidden');
+            results.classList.add('hidden');
+        });
+
+        // File upload
+        uploadBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                currentImageBlob = file;
+                const url = URL.createObjectURL(file);
+                
+                preview.src = url;
+                preview.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+                video.classList.add('hidden');
+                
+                analyzeButtons.classList.remove('hidden');
+                captureButtons.classList.add('hidden');
+                startCamera.disabled = false;
+            }
+        });
+
+        // Analysis functions
+        quickAnalyze.addEventListener('click', () => analyzeImage(false));
+        fullAnalyze.addEventListener('click', () => analyzeImage(true));
+
+        async function analyzeImage(fullAnalysis) {
+            if (!currentImageBlob) {
+                showError('Please capture or upload an image first');
+                return;
+            }
+
+            // Track analytics
+            trackEvent(fullAnalysis ? 'full_analysis' : 'quick_analysis', 'clothing_analysis');
+
+            const formData = new FormData();
+            formData.append('file', currentImageBlob);
+            
+            const category = categorySelect.value;
+            if (category) {
+                formData.append('manual_category', category);
+            }
+
+            showLoading();
+
+            try {
+                const endpoint = fullAnalysis ? '/appraise' : '/quick-caption';
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayResults(data, fullAnalysis);
+                    
+                    // Show interstitial ad after successful analysis (optional)
+                    if (fullAnalysis) {
+                        setTimeout(showInterstitialAd, 2000);
+                    }
+                } else {
+                    showError(data.error || 'Analysis failed');
+                }
+
+            } catch (error) {
+                showError('Network error. Please check your connection.');
+                trackEvent('analysis_error', 'errors');
+            }
+        }
+
+        function displayResults(data, fullAnalysis) {
+            results.classList.remove('hidden');
+            
+            if (fullAnalysis) {
+                // Full analysis with markdown-like formatting
+                const resultText = data.result.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                const sections = resultText.split('\n\n');
+                
+                let html = '';
+                sections.forEach(section => {
+                    if (section.trim()) {
+                        html += `<div class="result-card">${section.replace(/\n/g, '<br>')}</div>`;
+                    }
+                });
+                
+                resultsContent.innerHTML = html;
+                
+            } else {
+                // Quick analysis
+                resultsContent.innerHTML = `
+                    <div class="result-card">
+                        <div class="result-title">Category</div>
+                        <div class="result-value">${data.category} (${Math.round(data.confidence * 100)}% confidence)</div>
+                    </div>
+                    <div class="result-card">
+                        <div class="result-title">Description</div>
+                        <div class="result-value">${data.caption}</div>
+                    </div>
+                `;
+            }
+        }
+
+        function showLoading() {
+            results.classList.remove('hidden');
+            resultsContent.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <span>Analyzing image...</span>
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            results.classList.remove('hidden');
+            resultsContent.innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+        }
+    </script>
+</body>
+</html>

@@ -15,12 +15,25 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Fetch event
+// Fetch event - EXCLUDE API CALLS FROM CACHING
 self.addEventListener('fetch', (event) => {
+  // Don't cache API requests to your HuggingFace Space
+  if (event.request.url.includes('cnoval-flipfit.hf.space')) {
+    // Always fetch from network for API calls
+    event.respondWith(fetch(event.request));
+    return;
+  }
+  
+  // Don't cache POST requests
+  if (event.request.method !== 'GET') {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+  
+  // Cache other resources normally
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
-        // Return cached version or fetch from network
         return response || fetch(event.request);
       })
   );

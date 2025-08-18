@@ -481,36 +481,28 @@
         quickAnalyze.addEventListener('click', () => analyzeImage(false));
         fullAnalyze.addEventListener('click', () => analyzeImage(true));
 
-        // Progress bar function
-        function showProgress(steps) {
+        // Real-time progress bar function
+        function showProgress() {
             results.classList.remove('hidden');
             resultsContent.innerHTML = `
                 <div class="progress-container">
                     <div class="progress-bar">
-                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                        <div class="progress-fill" id="progressFill" style="width: 25%"></div>
                     </div>
-                    <div class="progress-text" id="progressText">Starting analysis...</div>
+                    <div class="progress-text" id="progressText">🚀 Sending image to AI...</div>
                 </div>
             `;
 
-            const progressFill = document.getElementById('progressFill');
-            const progressText = document.getElementById('progressText');
-            let currentStep = 0;
-
-            const updateProgress = () => {
-                if (currentStep < steps.length) {
-                    const percentage = ((currentStep + 1) / steps.length) * 100;
-                    progressFill.style.width = `${percentage}%`;
-                    progressText.textContent = steps[currentStep];
-                    currentStep++;
+            return {
+                update: (percentage, text) => {
+                    const progressFill = document.getElementById('progressFill');
+                    const progressText = document.getElementById('progressText');
+                    if (progressFill && progressText) {
+                        progressFill.style.width = `${percentage}%`;
+                        progressText.textContent = text;
+                    }
                 }
             };
-
-            // Update progress every 1-2 seconds
-            const interval = setInterval(updateProgress, 1500);
-            
-            // Store interval so we can clear it later
-            return interval;
         }
 
         async function analyzeImage(fullAnalysis) {
@@ -529,32 +521,17 @@
                 formData.append('manual_category', category);
             }
 
-            // Show progress bar with different steps based on analysis type
-            let progressInterval;
-            if (fullAnalysis) {
-                progressInterval = showProgress([
-                    "🔍 Analyzing image...",
-                    "🏷️ Detecting category...",
-                    "📝 Generating description...",
-                    "🔎 Reading text from image...",
-                    "💰 Searching current prices...",
-                    "📊 Analyzing sold items...",
-                    "✅ Complete!"
-                ]);
-            } else {
-                progressInterval = showProgress([
-                    "🔍 Analyzing image...",
-                    "🏷️ Detecting category...",
-                    "📝 Generating caption...",
-                    "✅ Complete!"
-                ]);
-            }
+            // Show initial progress
+            const progress = showProgress();
 
             try {
                 const endpoint = fullAnalysis ? '/appraise' : '/quick-caption';
                 const url = `${API_BASE}${endpoint}`;
                 
                 console.log(`Making request to: ${url}`);
+                
+                // Update progress when request starts
+                progress.update(50, '🤖 AI is analyzing your image...');
                 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -563,10 +540,8 @@
 
                 console.log('Response status:', response.status);
                 
-                // Clear progress interval
-                if (progressInterval) {
-                    clearInterval(progressInterval);
-                }
+                // Update progress when response received
+                progress.update(80, fullAnalysis ? '💰 Getting pricing data...' : '✨ Generating caption...');
                 
                 if (!response.ok) {
                     const errorText = await response.text();
@@ -575,6 +550,12 @@
 
                 const data = await response.json();
                 console.log('Response data:', data);
+
+                // Final progress update before showing results
+                progress.update(100, '✅ Analysis complete!');
+                
+                // Small delay to show completion
+                await new Promise(resolve => setTimeout(resolve, 500));
 
                 if (data.success) {
                     displayResults(data, fullAnalysis);
@@ -585,10 +566,6 @@
                 }
 
             } catch (error) {
-                // Clear progress interval on error
-                if (progressInterval) {
-                    clearInterval(progressInterval);
-                }
                 console.error('Analysis error:', error);
                 showError(`Network error: ${error.message}`);
                 logEvent('analysis_error', 'errors');

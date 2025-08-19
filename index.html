@@ -134,6 +134,11 @@
             color: white;
         }
 
+        .btn-warning {
+            background: linear-gradient(45deg, #d97706, #f59e0b);
+            color: white;
+        }
+
         button:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(0,0,0,0.1);
@@ -254,6 +259,73 @@
             margin: 10px 0;
             border: 1px solid #bbf7d0;
         }
+
+        /* === Additions for Draft JSON & Dev Tools === */
+        .json-block {
+            background: #0b1220;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 10px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+            font-size: 12px;
+            overflow-x: auto;
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #eef2ff;
+            color: #3730a3;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 6px;
+        }
+
+        .mini-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .mini-btn {
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            color: #334155;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .mini-btn:hover {
+            background: #eef2ff;
+        }
+
+        .dev-tools {
+            margin-top: 10px;
+        }
+
+        details summary {
+            cursor: pointer;
+            list-style: none;
+        }
+
+        details summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .summary-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: #fff7ed;
+            color: #9a3412;
+            font-weight: 700;
+            border: 1px solid #fed7aa;
+        }
     </style>
 </head>
 <body>
@@ -313,6 +385,15 @@
             <div class="button-row hidden" id="analyzeButtons">
                 <button id="quickAnalyze" class="btn-secondary">⚡ Quick Caption</button>
                 <button id="fullAnalyze" class="btn-primary">🔍 Full Analysis</button>
+                <!-- NEW: Create eBay Draft button -->
+                <button id="createDraft" class="btn-success" disabled>🧾 Create eBay Draft</button>
+            </div>
+
+            <!-- NEW: Dev Tools row -->
+            <div class="button-row hidden" id="devButtons">
+                <button id="pingHealth" class="btn-secondary">🩺 Ping /health</button>
+                <button id="pingDebug" class="btn-secondary">🛠️ Ping /debug</button>
+                <button id="pingCategories" class="btn-secondary">🗂️ Ping /categories</button>
             </div>
 
             <input type="file" id="fileInput" accept="image/*" class="hidden">
@@ -320,6 +401,46 @@
 
         <div class="results hidden" id="results">
             <div id="resultsContent"></div>
+
+            <!-- NEW: Draft results panel -->
+            <div id="draftResults" class="hidden">
+                <div class="result-card">
+                    <div class="result-title">eBay Category Suggestion</div>
+                    <div class="result-value">
+                        <span class="pill" id="categoryNamePill">—</span>
+                        <span class="pill" id="categoryIdPill">—</span>
+                    </div>
+                </div>
+                <div class="result-card">
+                    <div class="result-title">Suggested Price</div>
+                    <div class="result-value">
+                        <span class="pill" id="suggestedPricePill">$—</span>
+                    </div>
+                </div>
+                <div class="result-card">
+                    <div class="result-title">Draft Listing JSON</div>
+                    <pre class="json-block" id="draftJsonBlock">{}</pre>
+                    <div class="mini-row">
+                        <button class="mini-btn" id="copyDraftJson">📋 Copy JSON</button>
+                        <button class="mini-btn" id="downloadDraftJson">💾 Download JSON</button>
+                    </div>
+                </div>
+
+                <!-- NEW: Dev Tools collapsible -->
+                <details class="dev-tools">
+                    <summary class="summary-pill">🧪 Dev Tools (show/hide)</summary>
+                    <div class="result-card" style="margin-top:10px;">
+                        <div class="result-title">Endpoint Tests</div>
+                        <div class="button-row" style="margin-top:8px;">
+                            <button class="btn-secondary" id="devHealth">/health</button>
+                            <button class="btn-secondary" id="devDebug">/debug</button>
+                            <button class="btn-secondary" id="devCategories">/categories</button>
+                        </div>
+                        <div class="result-title" style="margin-top:10px;">Last Dev Response</div>
+                        <pre class="json-block" id="devResponseBlock">{}</pre>
+                    </div>
+                </details>
+            </div>
         </div>
     </div>
 
@@ -344,16 +465,34 @@
         const retakeBtn = document.getElementById('retakeBtn');
         const quickAnalyze = document.getElementById('quickAnalyze');
         const fullAnalyze = document.getElementById('fullAnalyze');
+        const createDraft = document.getElementById('createDraft');
         const fileInput = document.getElementById('fileInput');
         const categorySelect = document.getElementById('categorySelect');
         const results = document.getElementById('results');
         const resultsContent = document.getElementById('resultsContent');
         const captureButtons = document.getElementById('captureButtons');
         const analyzeButtons = document.getElementById('analyzeButtons');
+        const devButtons = document.getElementById('devButtons');
+
+        // Draft UI elements
+        const draftResults = document.getElementById('draftResults');
+        const categoryNamePill = document.getElementById('categoryNamePill');
+        const categoryIdPill = document.getElementById('categoryIdPill');
+        const suggestedPricePill = document.getElementById('suggestedPricePill');
+        const draftJsonBlock = document.getElementById('draftJsonBlock');
+        const copyDraftJson = document.getElementById('copyDraftJson');
+        const downloadDraftJson = document.getElementById('downloadDraftJson');
+
+        // Dev Tool elements
+        const devHealth = document.getElementById('devHealth');
+        const devDebug = document.getElementById('devDebug');
+        const devCategories = document.getElementById('devCategories');
+        const devResponseBlock = document.getElementById('devResponseBlock');
 
         let stream = null;
         let currentImageBlob = null;
         let currentFacingMode = 'environment'; // Start with back camera
+        let lastDraftObject = null;
 
         // Camera functionality
         async function startCameraStream() {
@@ -419,6 +558,8 @@
                 
                 captureButtons.classList.add('hidden');
                 analyzeButtons.classList.remove('hidden');
+                devButtons.classList.remove('hidden');
+                createDraft.disabled = false;
                 
                 logEvent('photo_captured');
                 
@@ -444,8 +585,12 @@
             // Reset buttons
             captureButtons.classList.add('hidden');
             analyzeButtons.classList.add('hidden');
+            devButtons.classList.add('hidden');
             results.classList.add('hidden');
+            draftResults.classList.add('hidden');
             startCamera.disabled = false;
+            createDraft.disabled = true;
+            lastDraftObject = null;
             
             // Reset to back camera for next time
             currentFacingMode = 'environment';
@@ -470,8 +615,10 @@
                 video.classList.add('hidden');
                 
                 analyzeButtons.classList.remove('hidden');
+                devButtons.classList.remove('hidden');
                 captureButtons.classList.add('hidden');
                 startCamera.disabled = false;
+                createDraft.disabled = false;
                 
                 logEvent('file_uploaded');
             }
@@ -602,12 +749,115 @@
                     </div>
                 `;
             }
+
+            // Reveal draft panel if we already created one before
+            if (lastDraftObject) {
+                draftResults.classList.remove('hidden');
+            }
         }
 
         function showError(message) {
             results.classList.remove('hidden');
             resultsContent.innerHTML = `<div class="error">${message}</div>`;
         }
+
+        // === NEW: Create Draft Listing flow ===
+        createDraft.addEventListener('click', async () => {
+            if (!currentImageBlob) {
+                showError('Please capture or upload an image first');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', currentImageBlob);
+            const category = categorySelect.value;
+            if (category) formData.append('manual_category', category);
+
+            // progress UI
+            const progress = showProgress();
+            progress.update(35, '📤 Uploading image…');
+
+            try {
+                const url = `${API_BASE}/create-draft-listing`;
+                const resp = await fetch(url, { method: 'POST', body: formData });
+                progress.update(65, '🧭 Suggesting category…');
+
+                if (!resp.ok) {
+                    const txt = await resp.text();
+                    throw new Error(`HTTP ${resp.status}: ${txt}`);
+                }
+
+                progress.update(85, '💵 Calculating suggested price…');
+
+                const data = await resp.json();
+                console.log('Draft API response:', data);
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Draft creation failed');
+                }
+
+                // Show draft info
+                lastDraftObject = data.draft_listing || {};
+                results.classList.remove('hidden');
+                draftResults.classList.remove('hidden');
+
+                const catName = (data.category_suggestion && data.category_suggestion.categoryName) || 'Unknown';
+                const catId = (data.category_suggestion && data.category_suggestion.categoryId) || '—';
+                const price = (typeof data.suggested_price === 'number')
+                    ? `$${data.suggested_price.toFixed(2)}`
+                    : `$${data.suggested_price || '—'}`;
+
+                categoryNamePill.textContent = catName;
+                categoryIdPill.textContent = `ID: ${catId}`;
+                suggestedPricePill.textContent = price;
+                draftJsonBlock.textContent = JSON.stringify(lastDraftObject, null, 2);
+
+                progress.update(100, '✅ Draft ready!');
+                await new Promise(r => setTimeout(r, 400));
+
+            } catch (err) {
+                console.error('Draft error:', err);
+                showError(`Draft error: ${err.message}`);
+            }
+        });
+
+        // Copy & Download handlers
+        copyDraftJson.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(draftJsonBlock.textContent);
+                alert('Draft JSON copied to clipboard ✅');
+            } catch (e) {
+                alert('Failed to copy. You can select and copy manually.');
+            }
+        });
+
+        downloadDraftJson.addEventListener('click', () => {
+            const blob = new Blob([draftJsonBlock.textContent || '{}'], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const ts = new Date().toISOString().replace(/[:.]/g, '-');
+            a.download = `flipfit-draft-${ts}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        });
+
+        // === NEW: Dev tools quick tests ===
+        async function runDevCall(path) {
+            try {
+                const res = await fetch(`${API_BASE}${path}`);
+                const data = await res.json();
+                devResponseBlock.textContent = JSON.stringify(data, null, 2);
+            } catch (e) {
+                devResponseBlock.textContent = `Error: ${e.message}`;
+            }
+        }
+
+        devHealth.addEventListener('click', () => runDevCall('/health'));
+        devDebug.addEventListener('click', () => runDevCall('/debug'));
+        devCategories.addEventListener('click', () => runDevCall('/categories'));
 
         // Test API connection on startup
         console.log('Testing API connection...');

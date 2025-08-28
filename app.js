@@ -194,28 +194,26 @@ async function analyzeImage(fullAnalysis) {
 
 function displayResults(data, fullAnalysis) {
     results.classList.remove('hidden');
-    const result = data.result;
 
-    if (!result) {
-        resultsContent.innerHTML = `<div class="result-card">No result returned</div>`;
-        return;
-    }
+    // Normalize response for fullAnalysis vs quick-caption
+    const result = data.result || data;  // fallback if result field missing
 
     let html = '';
 
     // CATEGORY
     html += `<div class="result-card">
                 <div class="result-title">Category</div>
-                <div class="result-value">${result.predicted_category || 'Unknown'} 
+                <div class="result-value">${result.predicted_category || result.category || 'Unknown'} 
                     ${result.confidence ? `(${Math.round(result.confidence*100)}%)` : ''}
                 </div>
              </div>`;
 
     // FINAL CAPTION
-    if (result.final_caption) {
+    const caption = result.final_caption || result.caption;
+    if (caption) {
         html += `<div class="result-card">
                     <div class="result-title">Description</div>
-                    <div class="result-value">${result.final_caption}</div>
+                    <div class="result-value">${caption}</div>
                  </div>`;
     }
 
@@ -228,8 +226,8 @@ function displayResults(data, fullAnalysis) {
     }
 
     // PRICE ESTIMATES
-    if (result.price_info) {
-        const pi = result.price_info;
+    const pi = result.price_info || result.prices;
+    if (pi) {
         html += `<div class="result-card price-card">
                     <div class="result-title">💰 Price Estimates</div>
                     <div class="result-value">

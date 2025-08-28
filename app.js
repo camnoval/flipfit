@@ -6,6 +6,13 @@ function logEvent(action, category = 'user_interaction') {
     console.log(`Event: ${action} | Category: ${category}`);
 }
 
+function logDebug(message, obj = null) {
+    const debugDiv = document.getElementById('api-response');
+    let output = message;
+    if (obj) output += "\n" + JSON.stringify(obj, null, 2);
+    debugDiv.textContent = output;
+}
+
 // DOM Elements
 const video = document.getElementById('video');
 const preview = document.getElementById('preview');

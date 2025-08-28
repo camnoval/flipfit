@@ -302,3 +302,30 @@ devCategories?.addEventListener('click', () => runDevCall('/categories'));
 
 // Test API on startup
 console.log('✅ App.js initialized and ready.');
+
+async function pingEndpoint(endpoint) {
+    const resultDiv = document.getElementById("api-response");
+    resultDiv.textContent = "⏳ Processing...";
+    
+    try {
+        const response = await fetch(endpoint);
+        const data = await response.json();
+        resultDiv.textContent = JSON.stringify(data, null, 2);
+    } catch (err) {
+        resultDiv.textContent = "❌ Error: " + err;
+    }
+}
+
+document.getElementById("ping-health").addEventListener("click", () => {
+    pingEndpoint("/health");
+});
+
+document.getElementById("ping-debug").addEventListener("click", () => {
+    pingEndpoint("/debug");
+});
+
+document.getElementById("ping-categories").addEventListener("click", () => {
+    pingEndpoint("/categories");
+});
+
+

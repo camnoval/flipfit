@@ -1,4 +1,3 @@
-
 // Configuration
 const API_BASE = 'https://cnoval-flipfit.hf.space';
 
@@ -38,37 +37,34 @@ const copyDraftJson = document.getElementById('copyDraftJson');
 const downloadDraftJson = document.getElementById('downloadDraftJson');
 
 // Dev Tool elements
-const devHealth = document.getElementById('devHealth');
-const devDebug = document.getElementById('devDebug');
-const devCategories = document.getElementById('devCategories');
+const devHealth = document.getElementById('pingHealth');
+const devDebug = document.getElementById('pingDebug');
+const devCategories = document.getElementById('pingCategories');
 const devResponseBlock = document.getElementById('devResponseBlock');
+
+// Caption editor
+const captionEditor = document.getElementById('captionEditor');
+const reappraiseBtn = document.getElementById('reappraiseBtn');
 
 let stream = null;
 let currentImageBlob = null;
-let currentFacingMode = 'environment'; // Start with back camera
+let currentFacingMode = 'environment'; // back camera default
 let lastDraftObject = null;
 
-// Camera functionality
+// ===== Camera functions =====
 async function startCameraStream() {
     try {
-        // Stop existing stream first
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-        }
-        
-        stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: currentFacingMode }
-        });
-        
+        if (stream) stream.getTracks().forEach(track => track.stop());
+
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode } });
         video.srcObject = stream;
         video.classList.remove('hidden');
         placeholder.classList.add('hidden');
         cameraContainer.classList.add('active');
         captureButtons.classList.remove('hidden');
         startCamera.disabled = true;
-        
+
         logEvent('camera_started');
-        
     } catch (error) {
         showError('Camera access denied or not available');
         console.error('Camera error:', error);
@@ -76,67 +72,52 @@ async function startCameraStream() {
     }
 }
 
-startCamera.addEventListener('click', () => {
-    startCameraStream();
-});
+startCamera.addEventListener('click', () => startCameraStream());
 
-// Flip camera between front and back
 flipCamera.addEventListener('click', () => {
     currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
     startCameraStream();
     logEvent('camera_flipped');
 });
 
-// Capture photo
 captureBtn.addEventListener('click', () => {
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    
     const context = canvas.getContext('2d');
     context.drawImage(video, 0, 0);
-    
-    canvas.toBlob((blob) => {
+
+    canvas.toBlob(blob => {
         currentImageBlob = blob;
         const url = URL.createObjectURL(blob);
-        
+
         preview.src = url;
         preview.classList.remove('hidden');
         video.classList.add('hidden');
-        
-        // Stop camera
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            stream = null;
-        }
-        
+
+        if (stream) stream.getTracks().forEach(track => track.stop());
+        stream = null;
+
         captureButtons.classList.add('hidden');
         analyzeButtons.classList.remove('hidden');
         devButtons.classList.remove('hidden');
         createDraft.disabled = false;
-        
+
         logEvent('photo_captured');
-        
     }, 'image/jpeg', 0.8);
 });
 
-// Stop camera and return to initial state
 retakeBtn.addEventListener('click', () => {
-    // Stop camera stream
-    if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-    }
-    
-    // Reset UI
+    if (stream) stream.getTracks().forEach(track => track.stop());
+    stream = null;
+
     video.classList.add('hidden');
     preview.classList.add('hidden');
     placeholder.classList.remove('hidden');
     preview.src = '';
     currentImageBlob = null;
     cameraContainer.classList.remove('active');
-    
-    // Reset buttons
+
     captureButtons.classList.add('hidden');
     analyzeButtons.classList.add('hidden');
     devButtons.classList.add('hidden');
@@ -145,44 +126,39 @@ retakeBtn.addEventListener('click', () => {
     startCamera.disabled = false;
     createDraft.disabled = true;
     lastDraftObject = null;
-    
-    // Reset to back camera for next time
+
     currentFacingMode = 'environment';
-    
     logEvent('camera_stopped');
 });
 
-// File upload - FIXED: Removed capture="camera" attribute
-uploadBtn.addEventListener('click', () => {
-    fileInput.click();
-});
+// ===== File Upload =====
+uploadBtn.addEventListener('click', () => fileInput.click());
 
-fileInput.addEventListener('change', (e) => {
+fileInput.addEventListener('change', e => {
     const file = e.target.files[0];
     if (file) {
         currentImageBlob = file;
         const url = URL.createObjectURL(file);
-        
+
         preview.src = url;
         preview.classList.remove('hidden');
         placeholder.classList.add('hidden');
         video.classList.add('hidden');
-        
+
         analyzeButtons.classList.remove('hidden');
         devButtons.classList.remove('hidden');
         captureButtons.classList.add('hidden');
         startCamera.disabled = false;
         createDraft.disabled = false;
-        
+
         logEvent('file_uploaded');
     }
 });
 
-// Analysis functions
+// ===== Analysis Functions =====
 quickAnalyze.addEventListener('click', () => analyzeImage(false));
 fullAnalyze.addEventListener('click', () => analyzeImage(true));
 
-// Real-time progress bar function
 function showProgress() {
     results.classList.remove('hidden');
     resultsContent.innerHTML = `
@@ -207,64 +183,33 @@ function showProgress() {
 }
 
 async function analyzeImage(fullAnalysis) {
-    if (!currentImageBlob) {
-        showError('Please capture or upload an image first');
-        return;
-    }
-
+    if (!currentImageBlob) return showError('Please capture or upload an image first');
     logEvent(fullAnalysis ? 'full_analysis' : 'quick_analysis', 'clothing_analysis');
 
     const formData = new FormData();
     formData.append('file', currentImageBlob);
-    
-    const category = categorySelect.value;
-    if (category) {
-        formData.append('manual_category', category);
-    }
+    if (categorySelect.value) formData.append('manual_category', categorySelect.value);
 
-    // Show initial progress
     const progress = showProgress();
 
     try {
         const endpoint = fullAnalysis ? '/appraise' : '/quick-caption';
         const url = `${API_BASE}${endpoint}`;
-        
-        console.log(`Making request to: ${url}`);
-        
-        // Update progress when request starts
         progress.update(50, '🤖 AI is analyzing your image...');
-        
-        const response = await fetch(url, {
-            method: 'POST',
-            body: formData
-        });
 
-        console.log('Response status:', response.status);
-        
-        // Update progress when response received
+        const response = await fetch(url, { method: 'POST', body: formData });
         progress.update(80, fullAnalysis ? '💰 Getting pricing data...' : '✨ Generating caption...');
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
 
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
         const data = await response.json();
-        console.log('Response data:', data);
-
-        // Final progress update before showing results
         progress.update(100, '✅ Analysis complete!');
-        
-        // Small delay to show completion
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(r => setTimeout(r, 500));
 
         if (data.success) {
             displayResults(data, fullAnalysis);
+            if (!fullAnalysis && data.caption) captionEditor.value = data.caption; // set for reappraisal
             logEvent('analysis_success', 'clothing_analysis');
-        } else {
-            showError(data.error || 'Analysis failed');
-            logEvent('analysis_failed', 'errors');
-        }
+        } else throw new Error(data.error || 'Analysis failed');
 
     } catch (error) {
         console.error('Analysis error:', error);
@@ -275,27 +220,19 @@ async function analyzeImage(fullAnalysis) {
 
 function displayResults(data, fullAnalysis) {
     results.classList.remove('hidden');
-    
     if (fullAnalysis) {
-        // Full analysis with markdown-like formatting
         const resultText = data.result.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         const sections = resultText.split('\n\n');
-        
         let html = '';
         sections.forEach(section => {
-            if (section.trim()) {
-                html += `<div class="result-card">${section.replace(/\n/g, '<br>')}</div>`;
-            }
+            if (section.trim()) html += `<div class="result-card">${section.replace(/\n/g, '<br>')}</div>`;
         });
-        
         resultsContent.innerHTML = html;
-        
     } else {
-        // Quick analysis
         resultsContent.innerHTML = `
             <div class="result-card">
                 <div class="result-title">Category</div>
-                <div class="result-value">${data.category} (${Math.round(data.confidence * 100)}% confidence)</div>
+                <div class="result-value">${data.category} (${Math.round(data.confidence*100)}% confidence)</div>
             </div>
             <div class="result-card">
                 <div class="result-title">Description</div>
@@ -303,11 +240,7 @@ function displayResults(data, fullAnalysis) {
             </div>
         `;
     }
-
-    // Reveal draft panel if we already created one before
-    if (lastDraftObject) {
-        draftResults.classList.remove('hidden');
-    }
+    if (lastDraftObject) draftResults.classList.remove('hidden');
 }
 
 function showError(message) {
@@ -315,19 +248,14 @@ function showError(message) {
     resultsContent.innerHTML = `<div class="error">${message}</div>`;
 }
 
-// === NEW: Create Draft Listing flow ===
+// ===== Draft Listing =====
 createDraft.addEventListener('click', async () => {
-    if (!currentImageBlob) {
-        showError('Please capture or upload an image first');
-        return;
-    }
+    if (!currentImageBlob) return showError('Please capture or upload an image first');
 
     const formData = new FormData();
     formData.append('file', currentImageBlob);
-    const category = categorySelect.value;
-    if (category) formData.append('manual_category', category);
+    if (categorySelect.value) formData.append('manual_category', categorySelect.value);
 
-    // progress UI
     const progress = showProgress();
     progress.update(35, '📤 Uploading image…');
 
@@ -336,34 +264,18 @@ createDraft.addEventListener('click', async () => {
         const resp = await fetch(url, { method: 'POST', body: formData });
         progress.update(65, '🧭 Suggesting category…');
 
-        if (!resp.ok) {
-            const txt = await resp.text();
-            throw new Error(`HTTP ${resp.status}: ${txt}`);
-        }
-
-        progress.update(85, '💵 Calculating suggested price…');
-
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
         const data = await resp.json();
-        console.log('Draft API response:', data);
 
-        if (!data.success) {
-            throw new Error(data.error || 'Draft creation failed');
-        }
+        if (!data.success) throw new Error(data.error || 'Draft creation failed');
 
-        // Show draft info
         lastDraftObject = data.draft_listing || {};
         results.classList.remove('hidden');
         draftResults.classList.remove('hidden');
 
-        const catName = (data.category_suggestion && data.category_suggestion.categoryName) || 'Unknown';
-        const catId = (data.category_suggestion && data.category_suggestion.categoryId) || '—';
-        const price = (typeof data.suggested_price === 'number')
-            ? `$${data.suggested_price.toFixed(2)}`
-            : `$${data.suggested_price || '—'}`;
-
-        categoryNamePill.textContent = catName;
-        categoryIdPill.textContent = `ID: ${catId}`;
-        suggestedPricePill.textContent = price;
+        categoryNamePill.textContent = (data.category_suggestion?.categoryName) || 'Unknown';
+        categoryIdPill.textContent = `ID: ${data.category_suggestion?.categoryId || '—'}`;
+        suggestedPricePill.textContent = (typeof data.suggested_price === 'number') ? `$${data.suggested_price.toFixed(2)}` : `$${data.suggested_price || '—'}`;
         draftJsonBlock.textContent = JSON.stringify(lastDraftObject, null, 2);
 
         progress.update(100, '✅ Draft ready!');
@@ -375,14 +287,10 @@ createDraft.addEventListener('click', async () => {
     }
 });
 
-// Copy & Download handlers
+// ===== Copy & Download JSON =====
 copyDraftJson.addEventListener('click', async () => {
-    try {
-        await navigator.clipboard.writeText(draftJsonBlock.textContent);
-        alert('Draft JSON copied to clipboard ✅');
-    } catch (e) {
-        alert('Failed to copy. You can select and copy manually.');
-    }
+    try { await navigator.clipboard.writeText(draftJsonBlock.textContent); alert('Draft JSON copied ✅'); }
+    catch { alert('Failed to copy. Select manually.'); }
 });
 
 downloadDraftJson.addEventListener('click', () => {
@@ -390,15 +298,14 @@ downloadDraftJson.addEventListener('click', () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    const ts = new Date().toISOString().replace(/[:.]/g, '-');
-    a.download = `flipfit-draft-${ts}.json`;
+    a.download = `flipfit-draft-${new Date().toISOString().replace(/[:.]/g,'-')}.json`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
 });
 
-// === NEW: Dev tools quick tests ===
+// ===== Dev Tools =====
 async function runDevCall(path) {
     try {
         const res = await fetch(`${API_BASE}${path}`);
@@ -413,17 +320,42 @@ devHealth.addEventListener('click', () => runDevCall('/health'));
 devDebug.addEventListener('click', () => runDevCall('/debug'));
 devCategories.addEventListener('click', () => runDevCall('/categories'));
 
-// Test API connection on startup
+// ===== Reappraisal (edit caption) =====
+reappraiseBtn.addEventListener('click', async () => {
+    if (!captionEditor.value.trim()) return showError('Caption cannot be empty');
+
+    const formData = new FormData();
+    if (currentImageBlob) formData.append('file', currentImageBlob);
+    formData.append('manual_caption', captionEditor.value);
+
+    const progress = showProgress();
+    progress.update(40, '🔄 Sending edited caption to AI…');
+
+    try {
+        const url = `${API_BASE}/reappraise`;
+        const resp = await fetch(url, { method: 'POST', body: formData });
+
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+        const data = await resp.json();
+        progress.update(100, '✅ Reappraisal complete!');
+        await new Promise(r => setTimeout(r, 300));
+
+        if (data.success) {
+            displayResults(data, true); // show full analysis
+        } else showError(data.error || 'Reappraisal failed');
+
+    } catch (err) {
+        console.error('Reappraisal error:', err);
+        showError(`Reappraisal error: ${err.message}`);
+    }
+});
+
+// ===== Initial API Health Check =====
 console.log('Testing API connection...');
 fetch(`${API_BASE}/health`)
-    .then(response => response.json())
+    .then(resp => resp.json())
     .then(data => {
         console.log('✅ API Health Check:', data);
-        if (data.models_loaded === 0) {
-            console.warn('⚠️ Warning: No models loaded in API');
-        }
+        if (data.models_loaded === 0) console.warn('⚠️ No models loaded in API');
     })
-    .catch(error => {
-        console.error('❌ API connection failed:', error);
-        showError('Cannot connect to AI service. Please check your internet connection and try again.');
-    });
+    .catch(err => { console.error('❌ API connection failed:', err); showError('Cannot connect to AI service.'); });

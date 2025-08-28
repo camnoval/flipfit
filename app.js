@@ -207,12 +207,26 @@ async function analyzeImage(fullAnalysis) {
         }
 
         const data = await resp.json();
-        console.log('API Response:', data);
+        console.log('API Response Status:', resp.status);
+        console.log('API Response Headers:', Object.fromEntries(resp.headers.entries()));
+        console.log('Raw API Response:', JSON.stringify(data, null, 2));
         
         progress.update(100, '✅ Analysis complete!');
         await new Promise(r => setTimeout(r, 300));
 
-        if (!data.success) throw new Error(data.error || 'Analysis failed');
+        // Check if response has success field and it's false
+        if (data.hasOwnProperty('success') && !data.success) {
+            throw new Error(data.error || 'Analysis failed - no success flag');
+        }
+
+        // Check if we got any meaningful data back
+        if (fullAnalysis && !data.result && !data.detected_category && !data.category) {
+            console.warn('No meaningful data returned from full analysis:', data);
+        }
+        
+        if (!fullAnalysis && !data.category && !data.caption) {
+            console.warn('No meaningful data returned from quick caption:', data);
+        }
 
         displayResults(data, fullAnalysis);
         logEvent('analysis_success', 'clothing_analysis');
@@ -227,10 +241,19 @@ async function analyzeImage(fullAnalysis) {
 function displayResults(data, fullAnalysis) {
     results.classList.remove('hidden');
 
+    // DEBUG: Show raw API response
+    console.log('Full API Response:', JSON.stringify(data, null, 2));
+
     // Handle different response formats between full analysis and quick caption
     const result = fullAnalysis ? data.result : data;
     
     let html = '';
+
+    // DEBUG: Add raw response card for troubleshooting
+    html += `<div class="result-card" style="background: #f3f4f6; border-left: 4px solid #6366f1;">
+                <div class="result-title">🐛 DEBUG - Raw API Response</div>
+                <pre style="white-space: pre-wrap; font-size: 12px; max-height: 200px; overflow-y: auto;">${JSON.stringify(data, null, 2)}</pre>
+             </div>`;
 
     // CATEGORY - handle both response formats
     const category = fullAnalysis 
@@ -290,6 +313,11 @@ function displayResults(data, fullAnalysis) {
 
     resultsContent.innerHTML = html;
 
+    // Populate the caption editor with the current caption for editing
+    if (captionEditor && caption) {
+        captionEditor.value = caption;
+    }
+
     // Update draft panel if JSON returned (full analysis only)
     if (fullAnalysis && data.draft_listing && draftResults) {
         lastDraftObject = data.draft_listing;
@@ -309,6 +337,87 @@ function displayResults(data, fullAnalysis) {
 // Event listeners for analysis buttons
 quickAnalyze.addEventListener('click', () => analyzeImage(false));
 fullAnalyze.addEventListener('click', () => analyzeImage(true));
+
+// === REAPPRAISAL FUNCTIONALITY ===
+const reappraiseBtn = document.getElementById('reappraiseBtn');
+const captionEditor = document.getElementById('captionEditor');
+
+if (reappraiseBtn) {
+    reappraiseBtn.addEventListener('click', async () => {
+        const editedCaption = captionEditor?.value?.trim();
+        if (!editedCaption) {
+            showError('Please enter a caption to reappraise');
+            return;
+        }
+        
+        logEvent('reappraisal_started', 'clothing_analysis');
+        
+        // Use the current category if we have one, or let it auto-detect
+        const currentCategory = categorySelect.value;
+        
+        const progress = showProgress();
+        progress.update(30, '🔄 Re-analyzing with edited caption...');
+        
+        try {
+            // Send JSON request with caption override
+            const requestBody = {
+                image_base64: currentImageBlob ? await blobToBase64(currentImageBlob) : null,
+                manual_category: currentCategory || null,
+                caption_override: editedCaption,
+                filename: 'reappraisal_image'
+            };
+            
+            console.log('Reappraisal request:', requestBody);
+            
+            const resp = await fetch(`${API_BASE}/appraise`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
+            
+            progress.update(70, 'Processing reappraisal...');
+            
+            if (!resp.ok) {
+                const txt = await resp.text();
+                throw new Error(`HTTP ${resp.status}: ${txt}`);
+            }
+            
+            const data = await resp.json();
+            console.log('Reappraisal response:', data);
+            
+            progress.update(100, '✅ Reappraisal complete!');
+            await new Promise(r => setTimeout(r, 300));
+            
+            if (data.hasOwnProperty('success') && !data.success) {
+                throw new Error(data.error || 'Reappraisal failed');
+            }
+            
+            // Display results with the reappraised data
+            displayResults(data, true); // true for full analysis format
+            logEvent('reappraisal_success', 'clothing_analysis');
+            
+        } catch (err) {
+            console.error('Reappraisal error:', err);
+            showError(`Reappraisal error: ${err.message}`);
+            logEvent('reappraisal_error', 'errors');
+        }
+    });
+}
+
+// Helper function to convert blob to base64
+async function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64 = reader.result.split(',')[1]; // Remove data:image/jpeg;base64, prefix
+            resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
 
 // === CREATE DRAFT USING STRUCTURED JSON ===
 createDraft.addEventListener('click', async () => {

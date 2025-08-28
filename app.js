@@ -194,16 +194,60 @@ async function analyzeImage(fullAnalysis) {
 
 function displayResults(data, fullAnalysis) {
     results.classList.remove('hidden');
+    const result = data.result;
 
-    if (fullAnalysis) {
-        const html = `<div class="result-card">${data.result.replace(/\n/g, '<br>')}</div>`;
-        resultsContent.innerHTML = html;
-    } else {
-        resultsContent.innerHTML = `
-            <div class="result-card"><div class="result-title">Category</div><div class="result-value">${data.category} (${Math.round(data.confidence*100)}%)</div></div>
-            <div class="result-card"><div class="result-title">Description</div><div class="result-value">${data.caption}</div></div>
-        `;
+    if (!result) {
+        resultsContent.innerHTML = `<div class="result-card">No result returned</div>`;
+        return;
     }
+
+    let html = '';
+
+    // CATEGORY
+    html += `<div class="result-card">
+                <div class="result-title">Category</div>
+                <div class="result-value">${result.predicted_category || 'Unknown'} 
+                    ${result.confidence ? `(${Math.round(result.confidence*100)}%)` : ''}
+                </div>
+             </div>`;
+
+    // FINAL CAPTION
+    if (result.final_caption) {
+        html += `<div class="result-card">
+                    <div class="result-title">Description</div>
+                    <div class="result-value">${result.final_caption}</div>
+                 </div>`;
+    }
+
+    // OCR TEXT
+    if (result.ocr_text) {
+        html += `<div class="result-card">
+                    <div class="result-title">Brand / Text Detected</div>
+                    <div class="result-value">${result.ocr_text}</div>
+                 </div>`;
+    }
+
+    // PRICE ESTIMATES
+    if (result.price_info) {
+        const pi = result.price_info;
+        html += `<div class="result-card price-card">
+                    <div class="result-title">💰 Price Estimates</div>
+                    <div class="result-value">
+                        <strong>Current Listings:</strong> Avg $${pi.current_avg || '—'}, Median $${pi.current_median || '—'}<br>
+                        <strong>Sold Listings:</strong> Avg $${pi.sold_avg || '—'}, Median $${pi.sold_median || '—'}
+                    </div>
+                 </div>`;
+    }
+
+    // SEARCH QUERY
+    if (result.search_query) {
+        html += `<div class="result-card">
+                    <div class="result-title">🔍 Search Query Used</div>
+                    <div class="result-value">${result.search_query}</div>
+                 </div>`;
+    }
+
+    resultsContent.innerHTML = html;
 
     // Update draft panel if JSON returned
     if (data.draft_listing) {
@@ -217,6 +261,8 @@ function displayResults(data, fullAnalysis) {
             : `$${data.suggested_price || '—'}`;
     }
 }
+
+
 
 quickAnalyze.addEventListener('click', () => analyzeImage(false));
 fullAnalyze.addEventListener('click', () => analyzeImage(true));

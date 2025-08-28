@@ -8,9 +8,24 @@ function logEvent(action, category = 'user_interaction') {
 
 function logDebug(message, obj = null) {
     const debugDiv = document.getElementById('api-response');
-    let output = message;
-    if (obj) output += "\n" + JSON.stringify(obj, null, 2);
-    debugDiv.textContent = output;
+    if (debugDiv) {
+        let output = message;
+        if (obj) output += "\n" + JSON.stringify(obj, null, 2);
+        debugDiv.textContent = output;
+    }
+}
+
+// Utility function to show errors
+function showError(message) {
+    const results = document.getElementById('results');
+    const resultsContent = document.getElementById('resultsContent');
+    results.classList.remove('hidden');
+    resultsContent.innerHTML = `
+        <div class="result-card" style="border-left: 4px solid #ef4444;">
+            <div class="result-title" style="color: #ef4444;">❌ Error</div>
+            <div class="result-value">${message}</div>
+        </div>
+    `;
 }
 
 // DOM Elements
@@ -111,7 +126,7 @@ retakeBtn.addEventListener('click', () => {
     analyzeButtons.classList.add('hidden');
     devButtons.classList.add('hidden');
     results.classList.add('hidden');
-    draftResults.classList.add('hidden');
+    if (draftResults) draftResults.classList.add('hidden');
     startCamera.disabled = false;
     createDraft.disabled = true;
     lastDraftObject = null;
@@ -143,11 +158,11 @@ fileInput.addEventListener('change', e => {
 function showProgress() {
     results.classList.remove('hidden');
     resultsContent.innerHTML = `
-        <div class="progress-container">
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill" style="width:25%"></div>
+        <div class="progress-container" style="padding: 20px; text-align: center;">
+            <div class="progress-bar" style="width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; margin-bottom: 10px;">
+                <div class="progress-fill" id="progressFill" style="width: 25%; height: 100%; background: #3b82f6; transition: width 0.3s ease;"></div>
             </div>
-            <div class="progress-text" id="progressText">🚀 Sending image to AI...</div>
+            <div class="progress-text" id="progressText" style="color: #6b7280;">🚀 Sending image to AI...</div>
         </div>
     `;
     return {
@@ -175,15 +190,25 @@ async function analyzeImage(fullAnalysis) {
 
     try {
         const endpoint = fullAnalysis ? '/appraise' : '/quick-caption';
-        const resp = await fetch(`${API_BASE}${endpoint}`, { method: 'POST', body: formData });
+        console.log(`Calling API: ${API_BASE}${endpoint}`);
+        
+        const resp = await fetch(`${API_BASE}${endpoint}`, { 
+            method: 'POST', 
+            body: formData 
+        });
+        
         progress.update(70, 'Processing response...');
+        console.log(`Response status: ${resp.status}`);
 
         if (!resp.ok) {
             const txt = await resp.text();
+            console.error(`API Error: ${txt}`);
             throw new Error(`HTTP ${resp.status}: ${txt}`);
         }
 
         const data = await resp.json();
+        console.log('API Response:', data);
+        
         progress.update(100, '✅ Analysis complete!');
         await new Promise(r => setTimeout(r, 300));
 
@@ -193,7 +218,7 @@ async function analyzeImage(fullAnalysis) {
         logEvent('analysis_success', 'clothing_analysis');
 
     } catch (err) {
-        console.error(err);
+        console.error('Analysis error:', err);
         showError(`Network error: ${err.message}`);
         logEvent('analysis_error', 'errors');
     }
@@ -202,21 +227,32 @@ async function analyzeImage(fullAnalysis) {
 function displayResults(data, fullAnalysis) {
     results.classList.remove('hidden');
 
-    // Normalize response for fullAnalysis vs quick-caption
-    const result = data.result || data;  // fallback if result field missing
-
+    // Handle different response formats between full analysis and quick caption
+    const result = fullAnalysis ? data.result : data;
+    
     let html = '';
 
-    // CATEGORY
+    // CATEGORY - handle both response formats
+    const category = fullAnalysis 
+        ? (result?.predicted_category || data.detected_category || 'Unknown')
+        : (data.category || 'Unknown');
+    
+    const confidence = fullAnalysis 
+        ? (result?.confidence || data.confidence)
+        : data.confidence;
+
     html += `<div class="result-card">
                 <div class="result-title">Category</div>
-                <div class="result-value">${result.predicted_category || result.category || 'Unknown'} 
-                    ${result.confidence ? `(${Math.round(result.confidence*100)}%)` : ''}
+                <div class="result-value">${category} 
+                    ${confidence ? `(${Math.round(confidence*100)}%)` : ''}
                 </div>
              </div>`;
 
-    // FINAL CAPTION
-    const caption = result.final_caption || result.caption;
+    // FINAL CAPTION/DESCRIPTION
+    const caption = fullAnalysis 
+        ? (result?.final_caption || data.caption_used)
+        : data.caption;
+    
     if (caption) {
         html += `<div class="result-card">
                     <div class="result-title">Description</div>
@@ -224,17 +260,17 @@ function displayResults(data, fullAnalysis) {
                  </div>`;
     }
 
-    // OCR TEXT
-    if (result.ocr_text) {
+    // OCR TEXT (full analysis only)
+    if (fullAnalysis && (result?.ocr_text || data.ocr_text)) {
         html += `<div class="result-card">
                     <div class="result-title">Brand / Text Detected</div>
-                    <div class="result-value">${result.ocr_text}</div>
+                    <div class="result-value">${result.ocr_text || data.ocr_text}</div>
                  </div>`;
     }
 
-    // PRICE ESTIMATES
-    const pi = result.price_info || result.prices;
-    if (pi) {
+    // PRICE ESTIMATES (full analysis only)
+    if (fullAnalysis && (result?.price_info || data.price_info)) {
+        const pi = result?.price_info || data.price_info;
         html += `<div class="result-card price-card">
                     <div class="result-title">💰 Price Estimates</div>
                     <div class="result-value">
@@ -244,31 +280,33 @@ function displayResults(data, fullAnalysis) {
                  </div>`;
     }
 
-    // SEARCH QUERY
-    if (result.search_query) {
+    // SEARCH QUERY (full analysis only)
+    if (fullAnalysis && (result?.search_query || data.search_query)) {
         html += `<div class="result-card">
                     <div class="result-title">🔍 Search Query Used</div>
-                    <div class="result-value">${result.search_query}</div>
+                    <div class="result-value">${result.search_query || data.search_query}</div>
                  </div>`;
     }
 
     resultsContent.innerHTML = html;
 
-    // Update draft panel if JSON returned
-    if (data.draft_listing) {
+    // Update draft panel if JSON returned (full analysis only)
+    if (fullAnalysis && data.draft_listing && draftResults) {
         lastDraftObject = data.draft_listing;
         draftResults.classList.remove('hidden');
-        draftJsonBlock.textContent = JSON.stringify(lastDraftObject, null, 2);
-        categoryNamePill.textContent = data.category_suggestion?.categoryName || 'Unknown';
-        categoryIdPill.textContent = `ID: ${data.category_suggestion?.categoryId || '—'}`;
-        suggestedPricePill.textContent = typeof data.suggested_price === 'number'
-            ? `$${data.suggested_price.toFixed(2)}`
-            : `$${data.suggested_price || '—'}`;
+        if (draftJsonBlock) draftJsonBlock.textContent = JSON.stringify(lastDraftObject, null, 2);
+        if (categoryNamePill) categoryNamePill.textContent = data.category_suggestion?.categoryName || 'Unknown';
+        if (categoryIdPill) categoryIdPill.textContent = `ID: ${data.category_suggestion?.categoryId || '—'}`;
+        if (suggestedPricePill) {
+            const price = typeof data.suggested_price === 'number'
+                ? `$${data.suggested_price.toFixed(2)}`
+                : `$${data.suggested_price || '—'}`;
+            suggestedPricePill.textContent = price;
+        }
     }
 }
 
-
-
+// Event listeners for analysis buttons
 quickAnalyze.addEventListener('click', () => analyzeImage(false));
 fullAnalyze.addEventListener('click', () => analyzeImage(true));
 
@@ -281,29 +319,37 @@ createDraft.addEventListener('click', async () => {
     if (categorySelect.value) formData.append('manual_category', categorySelect.value);
 
     // Optional size/color
-    const size = document.getElementById('sizeInput')?.value;
-    const color = document.getElementById('colorInput')?.value;
-    if (size) formData.append('size', size);
-    if (color) formData.append('color', color);
+    const sizeInput = document.getElementById('sizeInput');
+    const colorInput = document.getElementById('colorInput');
+    if (sizeInput?.value) formData.append('size', sizeInput.value);
+    if (colorInput?.value) formData.append('color', colorInput.value);
 
     const progress = showProgress();
     progress.update(30, '📤 Uploading image…');
 
     try {
         const resp = await fetch(`${API_BASE}/create-draft-listing`, { method: 'POST', body: formData });
-        if (!resp.ok) throw new Error(await resp.text());
+        if (!resp.ok) {
+            const errorText = await resp.text();
+            throw new Error(errorText);
+        }
 
         const data = await resp.json();
         if (!data.success) throw new Error(data.error || 'Draft creation failed');
 
         lastDraftObject = data.draft_listing || {};
-        draftResults.classList.remove('hidden');
-        draftJsonBlock.textContent = JSON.stringify(lastDraftObject, null, 2);
-        categoryNamePill.textContent = data.category_suggestion?.categoryName || 'Unknown';
-        categoryIdPill.textContent = `ID: ${data.category_suggestion?.categoryId || '—'}`;
-        suggestedPricePill.textContent = typeof data.suggested_price === 'number'
-            ? `$${data.suggested_price.toFixed(2)}`
-            : `$${data.suggested_price || '—'}`;
+        if (draftResults) {
+            draftResults.classList.remove('hidden');
+            if (draftJsonBlock) draftJsonBlock.textContent = JSON.stringify(lastDraftObject, null, 2);
+            if (categoryNamePill) categoryNamePill.textContent = data.category_suggestion?.categoryName || 'Unknown';
+            if (categoryIdPill) categoryIdPill.textContent = `ID: ${data.category_suggestion?.categoryId || '—'}`;
+            if (suggestedPricePill) {
+                const price = typeof data.suggested_price === 'number'
+                    ? `$${data.suggested_price.toFixed(2)}`
+                    : `$${data.suggested_price || '—'}`;
+                suggestedPricePill.textContent = price;
+            }
+        }
 
         progress.update(100, '✅ Draft ready!');
         await new Promise(r => setTimeout(r, 400));
@@ -315,68 +361,77 @@ createDraft.addEventListener('click', async () => {
 });
 
 // === COPY / DOWNLOAD JSON ===
-copyDraftJson.addEventListener('click', async () => {
-    try {
-        await navigator.clipboard.writeText(draftJsonBlock.textContent);
-        alert('Draft JSON copied ✅');
-    } catch {
-        alert('Failed to copy. Select and copy manually.');
-    }
-});
+if (copyDraftJson) {
+    copyDraftJson.addEventListener('click', async () => {
+        try {
+            if (draftJsonBlock) {
+                await navigator.clipboard.writeText(draftJsonBlock.textContent);
+                alert('Draft JSON copied ✅');
+            }
+        } catch {
+            alert('Failed to copy. Select and copy manually.');
+        }
+    });
+}
 
-downloadDraftJson.addEventListener('click', () => {
-    const blob = new Blob([draftJsonBlock.textContent || '{}'], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const ts = new Date().toISOString().replace(/[:.]/g, '-');
-    a.download = `flipfit-draft-${ts}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-});
+if (downloadDraftJson) {
+    downloadDraftJson.addEventListener('click', () => {
+        if (draftJsonBlock) {
+            const blob = new Blob([draftJsonBlock.textContent || '{}'], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const ts = new Date().toISOString().replace(/[:.]/g, '-');
+            a.download = `flipfit-draft-${ts}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+    });
+}
 
 // === DEV TEST TOOLS ===
 async function runDevCall(path) {
+    const devResponseBlock = document.getElementById('api-response');
+    if (!devResponseBlock) return;
+    
     try {
+        console.log(`Calling dev endpoint: ${API_BASE}${path}`);
         const res = await fetch(`${API_BASE}${path}`);
-        devResponseBlock.textContent = JSON.stringify(await res.json(), null, 2);
+        const data = await res.json();
+        devResponseBlock.textContent = JSON.stringify(data, null, 2);
     } catch (e) {
         devResponseBlock.textContent = `Error: ${e.message}`;
     }
 }
 
-devHealth?.addEventListener('click', () => runDevCall('/health'));
-devDebug?.addEventListener('click', () => runDevCall('/debug'));
-devCategories?.addEventListener('click', () => runDevCall('/categories'));
+// Dev button event listeners
+const devHealth = document.getElementById('ping-health');
+const devDebug = document.getElementById('ping-debug'); 
+const devCategories = document.getElementById('ping-categories');
+
+if (devHealth) devHealth.addEventListener('click', () => runDevCall('/health'));
+if (devDebug) devDebug.addEventListener('click', () => runDevCall('/debug'));
+if (devCategories) devCategories.addEventListener('click', () => runDevCall('/categories'));
 
 // Test API on startup
 console.log('✅ App.js initialized and ready.');
 
+// Ping endpoint function for the dev buttons
 async function pingEndpoint(endpoint) {
     const resultDiv = document.getElementById("api-response");
+    if (!resultDiv) return;
+    
     resultDiv.textContent = "⏳ Processing...";
     
     try {
-        const response = await fetch(endpoint);
+        console.log(`Pinging: ${API_BASE}${endpoint}`);
+        const response = await fetch(`${API_BASE}${endpoint}`);
         const data = await response.json();
         resultDiv.textContent = JSON.stringify(data, null, 2);
     } catch (err) {
-        resultDiv.textContent = "❌ Error: " + err;
+        resultDiv.textContent = "❌ Error: " + err.message;
+        console.error('Ping error:', err);
     }
 }
-
-document.getElementById("ping-health").addEventListener("click", () => {
-    pingEndpoint("/health");
-});
-
-document.getElementById("ping-debug").addEventListener("click", () => {
-    pingEndpoint("/debug");
-});
-
-document.getElementById("ping-categories").addEventListener("click", () => {
-    pingEndpoint("/categories");
-});
-
-

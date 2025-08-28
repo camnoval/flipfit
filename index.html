@@ -15,7 +15,7 @@
             <h1>🧠 FlipFit</h1>
             <p>AI Clothing Appraiser</p>
         </div>
-        <link rel="stylesheet" href="styles.css">
+
         <div class="camera-section">
             <div class="camera-container" id="cameraContainer">
                 <div class="camera-placeholder" id="placeholder">
@@ -66,11 +66,9 @@
             <div class="button-row hidden" id="analyzeButtons">
                 <button id="quickAnalyze" class="btn-secondary">⚡ Quick Caption</button>
                 <button id="fullAnalyze" class="btn-primary">🔍 Full Analysis</button>
-                <!-- NEW: Create eBay Draft button -->
                 <button id="createDraft" class="btn-success" disabled>🧾 Create eBay Draft</button>
             </div>
 
-            <!-- NEW: Dev Tools row -->
             <div class="button-row hidden" id="devButtons">
                 <button id="pingHealth" class="btn-secondary">🩺 Ping /health</button>
                 <button id="pingDebug" class="btn-secondary">🛠️ Ping /debug</button>
@@ -83,7 +81,6 @@
         <div class="results hidden" id="results">
             <div id="resultsContent"></div>
 
-            <!-- NEW: Draft results panel -->
             <div id="draftResults" class="hidden">
                 <div class="result-card">
                     <div class="result-title">eBay Category Suggestion</div>
@@ -107,7 +104,6 @@
                     </div>
                 </div>
 
-                <!-- NEW: Dev Tools collapsible -->
                 <details class="dev-tools">
                     <summary class="summary-pill">🧪 Dev Tools (show/hide)</summary>
                     <div class="result-card" style="margin-top:10px;">
@@ -124,6 +120,8 @@
             </div>
         </div>
     </div>
+
+    <!-- NEW: Include external JS -->
     <script src="app.js"></script>
 </body>
 </html>

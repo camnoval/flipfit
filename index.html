@@ -15,7 +15,6 @@
             <h1>🧠 FlipFit</h1>
             <p>AI Clothing Appraiser</p>
         </div>
-
         <div class="camera-section">
             <div class="camera-container" id="cameraContainer">
                 <div class="camera-placeholder" id="placeholder">
@@ -81,6 +80,16 @@
         <div class="results hidden" id="results">
             <div id="resultsContent"></div>
 
+            <!-- Caption editor for Reappraisal -->
+            <div class="result-card">
+                <div class="result-title">Edit Caption / Re-analyze</div>
+                <textarea id="captionEditor" rows="3" style="width:100%;"></textarea>
+                <div class="mini-row" style="margin-top:6px;">
+                    <button class="mini-btn" id="reappraiseBtn">🔄 Reappraise</button>
+                </div>
+            </div>
+
+            <!-- Draft results panel -->
             <div id="draftResults" class="hidden">
                 <div class="result-card">
                     <div class="result-title">eBay Category Suggestion</div>
@@ -103,25 +112,10 @@
                         <button class="mini-btn" id="downloadDraftJson">💾 Download JSON</button>
                     </div>
                 </div>
-
-                <details class="dev-tools">
-                    <summary class="summary-pill">🧪 Dev Tools (show/hide)</summary>
-                    <div class="result-card" style="margin-top:10px;">
-                        <div class="result-title">Endpoint Tests</div>
-                        <div class="button-row" style="margin-top:8px;">
-                            <button class="btn-secondary" id="devHealth">/health</button>
-                            <button class="btn-secondary" id="devDebug">/debug</button>
-                            <button class="btn-secondary" id="devCategories">/categories</button>
-                        </div>
-                        <div class="result-title" style="margin-top:10px;">Last Dev Response</div>
-                        <pre class="json-block" id="devResponseBlock">{}</pre>
-                    </div>
-                </details>
             </div>
         </div>
     </div>
 
-    <!-- NEW: Include external JS -->
     <script src="app.js"></script>
 </body>
 </html>
